@@ -1,0 +1,39 @@
+create database Registro_Libreria;
+use Registro_Libreria;
+
+CREATE TABLE Libros (
+    Codigo VARCHAR(10) PRIMARY KEY,
+    Nombre NVARCHAR(100) not null, 
+    Precio DECIMAL(10,2) not null,
+    Stock INT not null
+);
+
+CREATE TABLE Ventas (
+    IdVenta INT PRIMARY KEY IDENTITY(1,1), 
+    NombreLibro NVARCHAR(100) not null,
+    Cantidad INT NOT NULL,
+    Total DECIMAL(10,2) not null,
+
+    codigo_libro varchar(10) not null,
+    foreign key (codigo_libro) references Libros(Codigo)
+);
+
+
+INSERT INTO Libros (Codigo, Nombre, Precio, Stock)
+VALUES 
+('L001', 'Cien años de soledad', 75.00, 15),
+('L002', 'El Principito', 45.00, 20),
+('L003', 'IT', 85.00, 10),
+('L004', 'Harry Potter y la piedra filosofal', 60.00, 18),
+('L005', 'Don Quijote de la Mancha', 55.00, 12),
+('L006', 'La sombra del viento', 70.00, 25),
+('L007', 'El alquimista', 40.00, 30),
+('L008', 'Orgullo y prejuicio', 50.00, 14),
+('L009', 'El código Da Vinci', 65.00, 9),
+('L010', 'La casa de los espíritus', 80.00, 16);
+
+SELECT * FROM Libros;
+select * from Ventas;
+update Libros
+set Codigo='L012'
+where Codigo='l013';
