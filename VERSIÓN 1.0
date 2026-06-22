@@ -1,0 +1,228 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace avanze
+{
+    // Clase para representar un Libro
+    public class Libro
+    {
+        public string Codigo { get; set; }
+        public string Nombre { get; set; }
+        public decimal Precio { get; set; }
+        public int Stock { get; set; }
+    }
+
+    // Clase para representar cada Venta realizada
+    public class Venta
+    {
+        public string NombreLibro { get; set; }
+        public int Cantidad { get; set; }
+        public decimal Total { get; set; }
+    }
+
+    internal class Program
+    {
+        // Listas para guardar los libros y las ventas
+        static List<Libro> inventario = new List<Libro>();
+        static List<Venta> registroVentas = new List<Venta>();
+
+        static void Main(string[] args)
+        {
+            int opcion;
+
+            do
+            {
+                // Menú principal tal como el ejemplo
+                Console.WriteLine("====================================");
+                Console.WriteLine("   SISTEMA DE GESTIÓN DE LIBRERÍA");
+                Console.WriteLine("====================================");
+                Console.WriteLine("1. Registrar libro");
+                Console.WriteLine("2. Mostrar libros");
+                Console.WriteLine("3. Buscar libro");
+                Console.WriteLine("4. Registrar venta");
+                Console.WriteLine("5. Mostrar ventas");
+                Console.WriteLine("6. Salir");
+                Console.WriteLine();
+
+                Console.Write("Seleccione una opción: ");
+                opcion = Convert.ToInt32(Console.ReadLine());
+                Console.WriteLine();
+
+                switch (opcion)
+                {
+                    case 1:
+                        RegistrarLibro();
+                        break;
+                    case 2:
+                        MostrarLibros();
+                        break;
+                    case 3:
+                        BuscarLibro();
+                        break;
+                    case 4:
+                        RegistrarVenta();
+                        break;
+                    case 5:
+                        MostrarVentas();
+                        break;
+                    case 6:
+                        Console.WriteLine("Gracias por utilizar el sistema.");
+                        break;
+                    default:
+                        Console.WriteLine("Opción inválida, intente nuevamente.");
+                        break;
+                }
+
+                Console.WriteLine(); // Espacio para separar operaciones
+
+            } while (opcion != 6);
+        }
+
+        // 1. REGISTRAR LIBRO
+        static void RegistrarLibro()
+        {
+            Console.Write("Ingrese código: ");
+            string codigo = Console.ReadLine();
+
+            Console.Write("Ingrese nombre: ");
+            string nombre = Console.ReadLine();
+
+            Console.Write("Ingrese precio: ");
+            decimal precio = Convert.ToDecimal(Console.ReadLine());
+
+            Console.Write("Ingrese stock: ");
+            int stock = Convert.ToInt32(Console.ReadLine());
+
+            // Guardamos el nuevo libro
+            inventario.Add(new Libro
+            {
+                Codigo = codigo,
+                Nombre = nombre,
+                Precio = precio,
+                Stock = stock
+            });
+
+            Console.WriteLine("Libro registrado correctamente.");
+        }
+
+        // 2. MOSTRAR LIBROS
+        static void MostrarLibros()
+        {
+            if (inventario.Count == 0)
+            {
+                Console.WriteLine("No hay libros registrados.");
+                return;
+            }
+
+            foreach (var libro in inventario)
+            {
+                Console.WriteLine($"Código: {libro.Codigo}");
+                Console.WriteLine($"Nombre: {libro.Nombre}");
+                Console.WriteLine($"Precio: S/{libro.Precio}");
+                Console.WriteLine($"Stock: {libro.Stock}");
+                Console.WriteLine(); // Espacio entre libros
+            }
+        }
+
+        // 3. BUSCAR LIBRO
+        static void BuscarLibro()
+        {
+            Console.Write("Ingrese el nombre del libro a buscar: ");
+            string nombreBuscado = Console.ReadLine();
+
+            // Buscamos sin importar mayúsculas/minúsculas
+            var encontrado = inventario.FirstOrDefault(l =>
+                l.Nombre.Equals(nombreBuscado, StringComparison.OrdinalIgnoreCase));
+
+            if (encontrado != null)
+            {
+                Console.WriteLine("Libro encontrado:");
+                Console.WriteLine($"Código: {encontrado.Codigo}");
+                Console.WriteLine($"Nombre: {encontrado.Nombre}");
+                Console.WriteLine($"Precio: S/{encontrado.Precio}");
+                Console.WriteLine($"Stock: {encontrado.Stock}");
+            }
+            else
+            {
+                Console.WriteLine("Libro no encontrado.");
+            }
+        }
+
+        // 4. REGISTRAR VENTA
+        static void RegistrarVenta()
+        {
+            Console.WriteLine("Ingrese nombre del libro:");
+            string nombreVenta = Console.ReadLine();
+
+            // Buscamos el libro
+            var libroVendido = inventario.FirstOrDefault(l =>
+                l.Nombre.Equals(nombreVenta, StringComparison.OrdinalIgnoreCase));
+
+            if (libroVendido == null)
+            {
+                Console.WriteLine("Error: Libro no existe en el inventario.");
+                return;
+            }
+
+            Console.WriteLine("Cantidad:");
+            int cantidad = Convert.ToInt32(Console.ReadLine());
+
+            // VERIFICAMOS STOCK SUFICIENTE
+            if (cantidad > libroVendido.Stock)
+            {
+                Console.WriteLine("Error: No hay suficiente stock disponible.");
+                return;
+            }
+
+            // Restamos la cantidad vendida al stock
+            libroVendido.Stock -= cantidad;
+
+            // Calculamos el total
+            decimal totalVenta = cantidad * libroVendido.Precio;
+
+            // Guardamos la venta en el registro
+            registroVentas.Add(new Venta
+            {
+                NombreLibro = libroVendido.Nombre,
+                Cantidad = cantidad,
+                Total = totalVenta
+            });
+
+            Console.WriteLine("Venta registrada correctamente.");
+            Console.WriteLine($"Total: S/{totalVenta}");
+        }
+
+        // 5. MOSTRAR VENTAS 
+        static void MostrarVentas()
+        {
+            if (registroVentas.Count == 0)
+            {
+                Console.WriteLine("No hay ventas registradas.");
+                return;
+            }
+
+            // Recorremos la lista con un CONTADOR para numerar las ventas
+            for (int i = 0; i < registroVentas.Count; i++)
+            {
+                // El número de venta es "i + 1" porque en programación se empieza a contar desde 0
+                Console.WriteLine($"---------- Venta N°{i + 1} ----------");
+                Console.WriteLine("Libro:");
+                Console.WriteLine(registroVentas[i].NombreLibro);
+                Console.WriteLine("Cantidad:");
+                Console.WriteLine(registroVentas[i].Cantidad);
+                Console.WriteLine("Total:");
+                Console.WriteLine($"S/{registroVentas[i].Total}");
+                Console.WriteLine(); // Espacio entre venta y venta
+            }
+
+            // AQUÍ CALCULAMOS Y MOSTRAMOS LA GANANCIA TOTAL
+            decimal gananciaTotal = registroVentas.Sum(venta => venta.Total);
+            Console.WriteLine("=====================================");
+            Console.WriteLine($"GANANCIA TOTAL DEL DÍA: S/{gananciaTotal}");
+            Console.WriteLine("=====================================");
+        }
+    }
+}
