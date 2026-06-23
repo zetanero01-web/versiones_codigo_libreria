@@ -32,8 +32,4 @@ VALUES
 ('L009', 'El código Da Vinci', 65.00, 9),
 ('L010', 'La casa de los espíritus', 80.00, 16);
 
-SELECT * FROM Libros;
-select * from Ventas;
-update Libros
-set Codigo='L012'
-where Codigo='l013';
+
