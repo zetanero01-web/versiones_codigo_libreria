@@ -1,0 +1,642 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Data.SqlClient;
+using System.Text.RegularExpressions;
+
+
+
+
+namespace Registro_Libreria
+{
+    internal class Program
+    {
+        private static string CadenaConexion = "Data Source=(LocalDB)\\MSSQLLocalDB;Initial Catalog=Registro_Libreria;Integrated Security=True";
+
+        static void Pausar()
+        {
+            Console.WriteLine("\nPresione ENTER para volver al menú...");
+            while (Console.KeyAvailable) Console.ReadKey(true);
+            Console.ReadLine();
+        }
+
+        static void Main(string[] args)
+        {
+            int opcion;
+            do
+            {
+                Console.Clear();
+                Console.WriteLine("╔=═══════════════════════════════=═=╗");
+                Console.WriteLine("║   SISTEMA DE GESTIÓN DE LIBRERÍA  ║");
+                Console.WriteLine("╠══╦═══════════════════════════════=╣");
+                Console.WriteLine("║1.║ Registrar libro / Agregar Stock║");
+                Console.WriteLine("╠══╬════════════════════════════════╣");
+                Console.WriteLine("║2.║       Mostrar libros           ║");
+                Console.WriteLine("╠══╬════════════════════════════════╣");
+                Console.WriteLine("║3.║        Buscar libro            ║");
+                Console.WriteLine("╠══╬════════════════════════════════╣");
+                Console.WriteLine("║4.║       Registrar venta          ║");
+                Console.WriteLine("╠══╬════════════════════════════════╣");
+                Console.WriteLine("║5.║        Mostrar ventas          ║");
+                Console.WriteLine("╠══╬════════════════════════════════╣");
+                Console.WriteLine("║6.║         Buscar venta           ║");
+                Console.WriteLine("╠══╬════════════════════════════════╣");
+                Console.WriteLine("║7.║            Salir               ║");
+                Console.WriteLine("╚══╩════════════════════════════════╝");
+
+               Console.Write("\nSeleccione una opción: ");
+
+                if (!int.TryParse(Console.ReadLine(), out opcion))
+                {
+                    Console.WriteLine("\nIngrese solo números, por favor.");
+                    opcion = 0;
+                    Pausar();
+                    continue;
+                }
+
+                switch (opcion)
+                {
+                    case 1:
+                        RegistrarLibro();
+                        break;
+                    case 2:
+                        MostrarLibros();
+                        break;
+                    case 3:
+                        BuscarLibro();
+                        break;
+                    case 4:
+                        RegistrarVenta();
+                        break;
+                    case 5:
+                        MostrarVentas();
+                        break;
+                    case 6:
+                        BuscarVenta();
+                        break;
+                    case 7:
+                        Console.WriteLine("\nGracias por utilizar el sistema.");
+                        break;
+                    default:
+                        Console.WriteLine("\nOpción no válida. Intente nuevamente.");
+                        Pausar();
+                        break;
+                }
+
+            } while (opcion != 7);
+        }
+
+
+        static void RegistrarLibro()
+        {
+            Console.Clear();
+            Console.WriteLine("--- OPCIÓN: REGISTRAR / AGREGAR STOCK ---");
+            var listaCodigos = new System.Collections.Generic.List<string>();
+
+            Console.WriteLine("\n LISTA ACTUAL DE LIBROS:");
+            using (SqlConnection con = new SqlConnection(CadenaConexion))
+            {
+                string consulta = "SELECT Codigo, Nombre, Stock FROM Libros ORDER BY Codigo";
+                SqlCommand cmd = new SqlCommand(consulta, con);
+                try
+                {
+                    con.Open();
+                    SqlDataReader lector = cmd.ExecuteReader();
+                    if (!lector.HasRows)
+                    {
+                        Console.WriteLine("   (No hay libros registrados todavía)");
+                    }
+                    else
+                    {
+                        int posicion = 1;
+                        while (lector.Read())
+                        {
+                            listaCodigos.Add(lector["Codigo"].ToString());
+                            Console.WriteLine($"   [{posicion}] | Código: {lector["Codigo"]} | Nombre: {lector["Nombre"]} | Stock actual: {Convert.ToInt32(lector["Stock"]):N0}");
+                            posicion++;
+                        }
+                    }
+                    lector.Close();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"\n Error al cargar la lista: {ex.Message}");
+                    Pausar();
+                    return;
+                }
+            }
+
+            Console.WriteLine("\n¿Qué operación desea realizar?");
+            Console.WriteLine("1 - Agregar STOCK a un libro existente");
+            Console.WriteLine("2 - Registrar un libro NUEVO");
+            Console.Write("Seleccione una opción: ");
+
+            if (!int.TryParse(Console.ReadLine(), out int eleccion))
+            {
+                Console.WriteLine(" Opción inválida.");
+                Pausar();
+                return;
+            }
+
+            if (eleccion == 1)
+            {
+                Console.WriteLine("\n--- AGREGAR STOCK ---");
+                if (listaCodigos.Count == 0) { Console.WriteLine(" No hay libros."); Pausar(); return; }
+                Console.Write($"Ingrese posición (1 al {listaCodigos.Count}): ");
+
+                if (!int.TryParse(Console.ReadLine(), out int pos))
+                {
+                    Console.WriteLine(" Posición inválida.");
+                    Pausar();
+                    return;
+                }
+                if (pos < 1 || pos > listaCodigos.Count) { Console.WriteLine(" Posición inválida."); Pausar(); return; }
+                string cod = listaCodigos[pos - 1];
+
+                Console.Write("Cantidad a agregar: ");
+                if (!int.TryParse(Console.ReadLine(), out int cant))
+                {
+                    Console.WriteLine(" Cantidad inválida.");
+                    Pausar();
+                    return;
+                }
+                if (cant <= 0)
+                {
+                    Console.WriteLine(" La cantidad debe ser un número positivo mayor a cero.");
+                    Pausar();
+                    return;
+                }
+
+                using (SqlConnection con = new SqlConnection(CadenaConexion))
+                {
+                    string act = "UPDATE Libros SET Stock = Stock + @cant WHERE Codigo = @cod";
+                    SqlCommand cmdAct = new SqlCommand(act, con);
+                    cmdAct.Parameters.AddWithValue("@cant", cant);
+                    cmdAct.Parameters.AddWithValue("@cod", cod);
+                    try
+                    {
+                        con.Open();
+                        cmdAct.ExecuteNonQuery();
+                        Console.WriteLine(" Stock actualizado correctamente.");
+                    }
+                    catch (Exception ex) { Console.WriteLine($" Error: {ex.Message}"); }
+                }
+            }
+            else if (eleccion == 2)
+            {
+                Console.WriteLine("\n--- REGISTRAR NUEVO LIBRO ---");
+                Console.Write("Código (2 letras y 3 dígitos, ej: AB123): ");
+                string cod = Console.ReadLine().ToUpper().Trim();
+
+                if (!Regex.IsMatch(cod, @"^[A-Z]{1,2}[0-9]{1,3}$"))
+                {
+                    Console.WriteLine(" Código inválido. Debe tener como máximo 2 letras seguidas de hasta 3 dígitos (sin signos ni negativos). Ej: A1, AB123.");
+                    Pausar();
+                    return;
+                }
+
+                Console.Write("Nombre: ");
+                string nom = Console.ReadLine().Trim();
+
+                if (string.IsNullOrWhiteSpace(nom))
+                {
+                    Console.WriteLine(" Nombre inválido. No puede estar vacío ni contener solo espacios.");
+                    Pausar();
+                    return;
+                }
+
+                Console.Write("Precio: ");
+                if (!decimal.TryParse(Console.ReadLine(), out decimal pre))
+                {
+                    Console.WriteLine(" Precio inválido.");
+                    Pausar();
+                    return;
+                }
+                if (pre < 0)
+                {
+                    Console.WriteLine(" El precio no puede ser negativo.");
+                    Pausar();
+                    return;
+                }
+
+                Console.Write("Stock inicial: ");
+                if (!int.TryParse(Console.ReadLine(), out int stk))
+                {
+                    Console.WriteLine(" Stock inválido.");
+                    Pausar();
+                    return;
+                }
+                if (stk < 0)
+                {
+                    Console.WriteLine(" El stock no puede ser negativo.");
+                    Pausar();
+                    return;
+                }
+
+                using (SqlConnection con = new SqlConnection(CadenaConexion))
+                {
+                    string ins = "INSERT INTO Libros (Codigo, Nombre, Precio, Stock) VALUES (@cod, @nom, @pre, @stk)";
+                    SqlCommand cmdIns = new SqlCommand(ins, con);
+                    cmdIns.Parameters.AddWithValue("@cod", cod);
+                    cmdIns.Parameters.AddWithValue("@nom", nom);
+                    cmdIns.Parameters.AddWithValue("@pre", pre);
+                    cmdIns.Parameters.AddWithValue("@stk", stk);
+                    try
+                    {
+                        con.Open();
+                        cmdIns.ExecuteNonQuery();
+                        Console.WriteLine(" Libro registrado.");
+                    }
+                    catch { Console.WriteLine(" ERROR: El código ya existe."); }
+                }
+            }
+            else
+            {
+                Console.WriteLine(" Opción inválida.");
+            }
+
+            Pausar();
+        }
+
+
+        static void MostrarLibros()
+        {
+            Console.Clear();
+            Console.WriteLine("--- LISTA DE LIBROS REGISTRADOS ---");
+
+            System.Data.DataTable tabla = new System.Data.DataTable();
+            try
+            {
+                using (SqlConnection con = new SqlConnection(CadenaConexion))
+                {
+                    string consulta = "SELECT * FROM Libros ORDER BY Codigo";
+                    SqlCommand cmd = new SqlCommand(consulta, con);
+                    con.Open();
+                    System.Data.SqlClient.SqlDataAdapter adaptador = new System.Data.SqlClient.SqlDataAdapter(cmd);
+                    adaptador.Fill(tabla);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($" Error al conectar: {ex.Message}");
+                Pausar();
+                return;
+            }
+
+            if (tabla.Rows.Count == 0)
+            {
+                Console.WriteLine("(No hay libros registrados)");
+            }
+            else
+            {
+                foreach (System.Data.DataRow fila in tabla.Rows)
+                {
+                    Console.WriteLine($"\nCódigo: {fila["Codigo"]}");
+                    Console.WriteLine($"Nombre: {fila["Nombre"]}");
+                    Console.WriteLine($"Precio: S/{Convert.ToDecimal(fila["Precio"]):N2}");
+                    Console.WriteLine($"Stock: {Convert.ToInt32(fila["Stock"]):N0}");
+                }
+            }
+
+            Pausar();
+        }
+
+
+        static void BuscarLibro()
+        {
+            Console.Clear();
+            Console.WriteLine("--- BUSCAR LIBRO ---");
+            Console.Write("Ingrese código o nombre del libro: ");
+            string busqueda = Console.ReadLine();
+
+            using (SqlConnection con = new SqlConnection(CadenaConexion))
+            {
+                string consulta = @"SELECT * FROM Libros 
+                                    WHERE Codigo = @busc 
+                                    OR LOWER(Nombre) LIKE '%' + LOWER(@busc) + '%'";
+                SqlCommand cmd = new SqlCommand(consulta, con);
+                cmd.Parameters.AddWithValue("@busc", busqueda);
+
+                try
+                {
+                    con.Open();
+                    SqlDataReader lector = cmd.ExecuteReader();
+
+                    if (lector.Read())
+                    {
+                        Console.WriteLine($"\n LIBRO ENCONTRADO:");
+                        do
+                        {
+                            Console.WriteLine($"Código: {lector["Codigo"]} | Nombre: {lector["Nombre"]} | Precio: S/{Convert.ToDecimal(lector["Precio"]):N2} | Stock: {Convert.ToInt32(lector["Stock"]):N0}");
+                        } while (lector.Read());
+                    }
+                    else
+                    {
+                        Console.WriteLine("\n No se encontró ningún libro con esos datos.");
+                    }
+                    lector.Close();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"\n Error: {ex.Message}");
+                }
+            }
+
+            Pausar();
+        }
+
+
+        static void RegistrarVenta()
+        {
+            Console.Clear();
+            Console.WriteLine("--- REGISTRAR NUEVA VENTA ---");
+            var listaCodigos = new System.Collections.Generic.List<string>();
+
+            Console.WriteLine("\n LISTA DE LIBROS DISPONIBLES:");
+            using (SqlConnection con = new SqlConnection(CadenaConexion))
+            {
+                string consulta = "SELECT Codigo, Nombre, Precio, Stock FROM Libros ORDER BY Codigo";
+                SqlCommand cmd = new SqlCommand(consulta, con);
+                try
+                {
+                    con.Open();
+                    SqlDataReader lector = cmd.ExecuteReader();
+                    if (!lector.HasRows) { Console.WriteLine("   (No hay libros registrados)"); Pausar(); return; }
+                    int pos = 1;
+                    while (lector.Read())
+                    {
+                        listaCodigos.Add(lector["Codigo"].ToString());
+                        Console.WriteLine($"   [{pos}] | {lector["Nombre"]} | Stock: {Convert.ToInt32(lector["Stock"]):N0}");
+                        pos++;
+                    }
+                    lector.Close();
+                }
+                catch (Exception ex) { Console.WriteLine($" Error: {ex.Message}"); Pausar(); return; }
+            }
+
+            Console.WriteLine("\n¿Cómo desea realizar la venta?");
+            Console.WriteLine("1 - Ingresando el CÓDIGO");
+            Console.WriteLine("2 - Eligiendo por NÚMERO DE POSICIÓN");
+            Console.Write("Opción: ");
+
+            if (!int.TryParse(Console.ReadLine(), out int opcionVenta))
+            {
+                Console.WriteLine(" Opción inválida.");
+                Pausar();
+                return;
+            }
+
+            string codigoLibro = "";
+
+            if (opcionVenta == 1)
+            {
+                Console.Write("Ingrese Código: ");
+                codigoLibro = Console.ReadLine().ToUpper().Trim();
+
+                if (!Regex.IsMatch(codigoLibro, @"^[A-Z]{1,2}[0-9]{1,3}$"))
+                {
+                    Console.WriteLine(" Código inválido. Debe tener 1-2 letras al inicio seguidas de hasta 3 dígitos (ej: A1, AB123).");
+                    Pausar();
+                    return;
+                }
+            }
+            else if (opcionVenta == 2)
+            {
+                Console.Write($"Ingrese número de posición (1 al {listaCodigos.Count}): ");
+                if (!int.TryParse(Console.ReadLine(), out int numPos))
+                {
+                    Console.WriteLine(" Posición inválida.");
+                    Pausar();
+                    return;
+                }
+                if (numPos < 1 || numPos > listaCodigos.Count) { Console.WriteLine(" Posición inválida."); Pausar(); return; }
+                codigoLibro = listaCodigos[numPos - 1];
+            }
+            else
+            {
+                Console.WriteLine(" Opción inválida.");
+                Pausar();
+                return;
+            }
+
+            decimal precioLibro = 0; int stockDisponible = 0; string nombreLibro = ""; bool libroExiste = false;
+
+            using (SqlConnection con = new SqlConnection(CadenaConexion))
+            {
+                string consultaBuscar = "SELECT * FROM Libros WHERE LOWER(Codigo) = LOWER(@cod)";
+                SqlCommand comandoBuscar = new SqlCommand(consultaBuscar, con);
+                comandoBuscar.Parameters.AddWithValue("@cod", codigoLibro);
+
+                try
+                {
+                    con.Open();
+                    SqlDataReader datos = comandoBuscar.ExecuteReader();
+                    if (datos.Read())
+                    {
+                        libroExiste = true;
+                        nombreLibro = datos["Nombre"].ToString();
+                        precioLibro = Convert.ToDecimal(datos["Precio"]);
+                        stockDisponible = Convert.ToInt32(datos["Stock"]);
+                    }
+                    datos.Close();
+
+                    if (!libroExiste) { Console.WriteLine(" Código no registrado."); Pausar(); return; }
+
+                    Console.WriteLine($"\n LIBRO SELECCIONADO: {nombreLibro}");
+                    Console.WriteLine($"   Precio: S/{precioLibro:N2} | Stock disponible: {stockDisponible:N0}");
+                    Console.Write("   Cantidad a vender: ");
+
+                    if (!int.TryParse(Console.ReadLine(), out int cantVender))
+                    {
+                        Console.WriteLine(" Cantidad inválida.");
+                        Pausar();
+                        return;
+                    }
+
+                    if (cantVender <= 0) { Console.WriteLine(" Cantidad inválida. Debe ser un número positivo mayor a cero."); Pausar(); return; }
+                    if (cantVender > stockDisponible) { Console.WriteLine(" No hay suficiente stock."); Pausar(); return; }
+
+                    decimal totalVenta = precioLibro * cantVender;
+
+                    string guardarVenta = "INSERT INTO Ventas (codigo_libro, NombreLibro, Cantidad, Total, FechaVenta) VALUES (@cod, @nom, @cant, @tot, GETDATE())";
+                    SqlCommand cmdVenta = new SqlCommand(guardarVenta, con);
+                    cmdVenta.Parameters.AddWithValue("@cod", codigoLibro.ToUpper());
+                    cmdVenta.Parameters.AddWithValue("@nom", nombreLibro);
+                    cmdVenta.Parameters.AddWithValue("@cant", cantVender);
+                    cmdVenta.Parameters.AddWithValue("@tot", totalVenta);
+                    cmdVenta.ExecuteNonQuery();
+
+                    string actStock = "UPDATE Libros SET Stock = Stock - @cant WHERE LOWER(Codigo) = LOWER(@cod)";
+                    SqlCommand cmdAct = new SqlCommand(actStock, con);
+                    cmdAct.Parameters.AddWithValue("@cant", cantVender);
+                    cmdAct.Parameters.AddWithValue("@cod", codigoLibro);
+                    cmdAct.ExecuteNonQuery();
+
+                    Console.WriteLine($"\n VENTA REGISTRADA CORRECTAMENTE.");
+                    Console.WriteLine($"   Total a pagar: S/{totalVenta:N2}");
+                }
+                catch (Exception ex) { Console.WriteLine($" Error: {ex.Message}"); }
+            }
+
+            Pausar();
+        }
+
+
+        static void MostrarVentas()
+        {
+            Console.Clear();
+            Console.WriteLine("--- HISTORIAL DE VENTAS ---");
+            using (SqlConnection con = new SqlConnection(CadenaConexion))
+            {
+                string consulta = "SELECT * FROM Ventas";
+                SqlCommand cmd = new SqlCommand(consulta, con);
+                try
+                {
+                    con.Open();
+                    SqlDataReader lector = cmd.ExecuteReader();
+                    int numVenta = 1; decimal sumaTotal = 0;
+                    if (!lector.HasRows) { Console.WriteLine("(Sin ventas registradas)"); }
+                    else
+                    {
+                        while (lector.Read())
+                        {
+                            Console.WriteLine($"\n VENTA N° {numVenta}");
+                            Console.WriteLine($"   Código: {lector["codigo_libro"]}");
+                            Console.WriteLine($"   Libro: {lector["NombreLibro"]}");
+                            Console.WriteLine($"   Cantidad: {Convert.ToInt32(lector["Cantidad"]):N0}");
+                            Console.WriteLine($"   Subtotal: S/{Convert.ToDecimal(lector["Total"]):N2}");
+                            Console.WriteLine($"   Fecha: {Convert.ToDateTime(lector["FechaVenta"]):dd/MM/yyyy HH:mm}");
+                            sumaTotal += Convert.ToDecimal(lector["Total"]);
+                            numVenta++;
+                        }
+                        Console.WriteLine("\n=====================================");
+                        Console.WriteLine($" TOTAL GENERAL VENDIDO: S/{sumaTotal:N2}");
+                        Console.WriteLine("=====================================");
+                    }
+                    lector.Close();
+                }
+                catch (Exception ex) { Console.WriteLine($" Error: {ex.Message}"); }
+            }
+
+            Pausar();
+        }
+
+        static void BuscarVenta()
+        {
+            Console.Clear();
+            Console.WriteLine("--- BUSCAR VENTA ---");
+            Console.WriteLine("1 - Por Código de libro");
+            Console.WriteLine("2 - Por Nombre de libro");
+            Console.WriteLine("3 - Por Fecha");
+            Console.Write("Seleccione una opción: ");
+
+            if (!int.TryParse(Console.ReadLine(), out int opcionBusqueda))
+            {
+                Console.WriteLine(" Opción inválida.");
+                Pausar();
+                return;
+            }
+
+            using (SqlConnection con = new SqlConnection(CadenaConexion))
+            {
+                SqlCommand cmd = new SqlCommand();
+                cmd.Connection = con;
+
+                if (opcionBusqueda == 1)
+                {
+                    Console.Write("Ingrese el código del libro: ");
+                    string cod = Console.ReadLine().ToUpper().Trim();
+
+                    if (!Regex.IsMatch(cod, @"^[A-Z]{1,2}[0-9]{1,3}$"))
+                    {
+                        Console.WriteLine(" Código inválido. Debe tener 1-2 letras al inicio seguidas de hasta 3 dígitos (ej: A1, AB123).");
+                        Pausar();
+                        return;
+                    }
+
+                    cmd.CommandText = "SELECT * FROM Ventas WHERE UPPER(codigo_libro) = @valor ORDER BY FechaVenta";
+                    cmd.Parameters.AddWithValue("@valor", cod);
+                }
+                else if (opcionBusqueda == 2)
+                {
+                    Console.Write("Ingrese el nombre (o parte) del libro: ");
+                    string nom = Console.ReadLine().Trim();
+
+                    if (string.IsNullOrWhiteSpace(nom))
+                    {
+                        Console.WriteLine(" Debe ingresar un nombre.");
+                        Pausar();
+                        return;
+                    }
+
+                    cmd.CommandText = "SELECT * FROM Ventas WHERE LOWER(NombreLibro) LIKE '%' + LOWER(@valor) + '%' ORDER BY FechaVenta";
+                    cmd.Parameters.AddWithValue("@valor", nom);
+                }
+                else if (opcionBusqueda == 3)
+                {
+                    Console.Write("Ingrese la fecha a buscar (dd/MM/yyyy): ");
+                    string fechaTexto = Console.ReadLine().Trim();
+
+                    if (!DateTime.TryParseExact(fechaTexto, "dd/MM/yyyy",
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.None, out DateTime fechaBuscada))
+                    {
+                        Console.WriteLine(" Fecha inválida. Use el formato dd/MM/yyyy");
+                        Pausar();
+                        return;
+                    }
+
+                    cmd.CommandText = "SELECT * FROM Ventas WHERE CAST(FechaVenta AS DATE) = @valor ORDER BY FechaVenta";
+                    cmd.Parameters.AddWithValue("@valor", fechaBuscada.Date);
+                }
+                else
+                {
+                    Console.WriteLine(" Opción inválida.");
+                    Pausar();
+                    return;
+                }
+
+                try
+                {
+                    con.Open();
+                    SqlDataReader lector = cmd.ExecuteReader();
+                    int numVenta = 1;
+                    decimal sumaTotal = 0;
+
+                    if (!lector.HasRows)
+                    {
+                        Console.WriteLine("\n No se encontraron ventas con ese criterio.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("\n RESULTADOS ENCONTRADOS:");
+                        while (lector.Read())
+                        {
+                            Console.WriteLine($"\n VENTA N° {numVenta}");
+                            Console.WriteLine($"   Código: {lector["codigo_libro"]}");
+                            Console.WriteLine($"   Libro: {lector["NombreLibro"]}");
+                            Console.WriteLine($"   Cantidad: {Convert.ToInt32(lector["Cantidad"]):N0}");
+                            Console.WriteLine($"   Subtotal: S/{Convert.ToDecimal(lector["Total"]):N2}");
+                            Console.WriteLine($"   Fecha: {Convert.ToDateTime(lector["FechaVenta"]):dd/MM/yyyy HH:mm}");
+                            sumaTotal += Convert.ToDecimal(lector["Total"]);
+                            numVenta++;
+                        }
+                        Console.WriteLine("\n=====================================");
+                        Console.WriteLine($" TOTAL DE LA BÚSQUEDA: S/{sumaTotal:N2}");
+                        Console.WriteLine("=====================================");
+                    }
+                    lector.Close();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($" Error: {ex.Message}");
+                }
+            }
+
+            Pausar();
+        }
+
+    }
+}
